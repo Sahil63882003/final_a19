@@ -1,36 +1,8 @@
-# =============================================================================
-#  requirements.txt for Algo19 Utils (Streamlit app with 3 tabs)
-#  Last tested/compatible ~ early 2025 versions
-# =============================================================================
-python-3.11
-# Core framework
-streamlit>=1.38.0,<1.43.0          # avoid very latest if unstable
-
-# Data processing & Excel/CSV handling
+streamlit>=1.38.0,<1.43.0
 pandas>=2.2.0,<2.3.0
-numpy>=1.26.0,<2.0.0               # numpy 2.x sometimes breaks pandas compatibility
-openpyxl>=3.1.0                    # required for pd.read_excel .xlsx files
+numpy>=1.26.0,<2.0.0
+openpyxl>=3.1.2
 python-dateutil>=2.8.2
 pytz>=2024.1
-
-# Optional but very useful / sometimes pulled indirectly
-xlrd>=2.0.1                        # fallback for older .xls files (rare but safe)
-xlsxwriter>=3.2.0                  # alternative Excel writer engine
-
-# Standard library modules already included in Python - no need to list:
-# os, shutil, tempfile, re, datetime, collections, io, traceback
-
-# If you ever add charts/visuals in future (currently not used)
-# matplotlib>=3.8.0
-# plotly>=5.18.0
-
-# ────────────────────────────────────────────────
-# Minimal set that should work (copy-paste this if you want shortest version)
-# ────────────────────────────────────────────────
-# streamlit
-# pandas
-# numpy
-# openpyxl
-# python-dateutil
-# pytz
-
+xlrd>=2.0.1
+xlsxwriter>=3.2.0
