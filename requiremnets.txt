@@ -1,25 +1,21 @@
 # Core Streamlit + data handling
-streamlit>=1.38.0          # latest stable versions as of late 2025
-pandas>=2.2.0
-numpy>=1.26.0
-openpyxl>=3.1.0            # needed for Excel reading/writing
-xlrd>=2.0.1                # sometimes needed for older .xls files
+streamlit         # latest stable versions as of late 2025
+pandas
+numpy
+openpyxl           # needed for Excel reading/writing
+xlrd                # sometimes needed for older .xls files
 
 # Date/time and regex
-python-dateutil>=2.8.0
-pytz>=2024.1
+python-dateutil
+pytz
 
 # Temporary files, shutil, etc. (usually already in stdlib, but good to note dependencies)
 # No extra packages needed for tempfile, shutil, os, re, io, collections
 
 # Optional but recommended for better performance / features
-matplotlib>=3.8.0          # if you ever add charts in the future
-xlsxwriter>=3.2.0          # alternative Excel engine (faster in some cases)
+matplotlib        # if you ever add charts in the future
+xlsxwriter          # alternative Excel engine (faster in some cases)
 
-# ────────────────────────────────────────────────
-# Minimal working set (you can start with just these)
-# ────────────────────────────────────────────────
-# streamlit
-# pandas
-# openpyxl
+
+
 # numpy
