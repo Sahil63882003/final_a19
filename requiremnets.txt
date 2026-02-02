@@ -2,7 +2,7 @@
 #  requirements.txt for Algo19 Utils (Streamlit app with 3 tabs)
 #  Last tested/compatible ~ early 2025 versions
 # =============================================================================
-
+python-3.11
 # Core framework
 streamlit>=1.38.0,<1.43.0          # avoid very latest if unstable
 
@@ -33,3 +33,4 @@ xlsxwriter>=3.2.0                  # alternative Excel writer engine
 # openpyxl
 # python-dateutil
 # pytz
+
