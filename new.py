@@ -12,7 +12,7 @@ import shutil
 import traceback
 from datetime import date
 import tempfile
-
+import openpyxl
 
 st.set_page_config(page_title="Algo19 Utils", layout="wide")
 
@@ -360,6 +360,7 @@ def run_processing(
 ):
     today = date.today().strftime("%Y%m%d")
 
+    # Temp filenames used internally by apply_fifo (unchanged)
     fn_nfo_i = f"final_nfo_iifl_{today}.csv"
     cn_nfo_i = f"carry_nfo_iifl_{today}.csv"
     fb_nfo_i = f"final_bfo_iifl_{today}.csv"
@@ -370,22 +371,33 @@ def run_processing(
     fb_nfo_n = f"final_bfo_noren_{today}.csv"
     cb_nfo_n = f"carry_bfo_noren_{today}.csv"
 
-    updated_path = os.path.join(os.path.expanduser("~"), "Downloads", output_name)
-
     with st.status("Processing...", expanded=True) as status:
         status.write("Loading files...")
         _, noren_users, iifl_users, _ = load_summary(summary_path)
         orderbook_df = load_orderbook(orderbook_path)
 
+        # Load EOD once
+        try:
+            eod_df = pd.read_csv(eod_path)
+        except Exception as e:
+            st.error(f"Cannot read EOD file: {str(e)}")
+            return None, None, None, None, None, None, None, None, None
+
         if orderbook_df.empty:
-            shutil.copy(eod_path, updated_path)
-            status.update(label="No valid orders", state="complete")
-            return updated_path, None,None,None,None, None,None,None,None
+            status.update(label="No valid orders found", state="complete")
+            # Return original EOD as updated (no changes)
+            return eod_df, None, None, None, None, None, None, None, None
 
-        current = eod_path
+        current_df = eod_df.copy()
 
-        i_final_nfo = i_carry_nfo = i_final_bfo = i_carry_bfo = None
-        n_final_nfo = n_carry_nfo = n_final_bfo = n_carry_bfo = None
+        # We'll collect DataFrames for download
+        download_data = {
+            "updated_df": None,
+            "i_final_nfo": None, "i_carry_nfo": None,
+            "i_final_bfo": None, "i_carry_bfo": None,
+            "n_final_nfo": None, "n_carry_nfo": None,
+            "n_final_bfo": None, "n_carry_bfo": None,
+        }
 
         if not iifl_users.empty:
             status.write("Processing IIFL...")
@@ -395,12 +407,18 @@ def run_processing(
                 fn_nfo_i, cn_nfo_i, fb_nfo_i, cb_nfo_i
             )
             if not pos_i.empty:
-                current = update_eod_positions(current, pos_i, updated_path)
+                current_df = update_eod_positions_df(current_df, pos_i)  # ← using the df version
+                download_data["updated_df"] = current_df.copy()
 
-            if os.path.exists(fn_nfo_i): i_final_nfo = move_to_downloads(fn_nfo_i, fn_nfo_i)
-            if os.path.exists(cn_nfo_i): i_carry_nfo = move_to_downloads(cn_nfo_i, cn_nfo_i)
-            if os.path.exists(fb_nfo_i): i_final_bfo = move_to_downloads(fb_nfo_i, fb_nfo_i)
-            if os.path.exists(cb_nfo_i): i_carry_bfo = move_to_downloads(cb_nfo_i, cb_nfo_i)
+            # Read what apply_fifo wrote
+            if os.path.exists(fn_nfo_i):
+                download_data["i_final_nfo"] = pd.read_csv(fn_nfo_i)
+            if os.path.exists(cn_nfo_i):
+                download_data["i_carry_nfo"] = pd.read_csv(cn_nfo_i)
+            if os.path.exists(fb_nfo_i):
+                download_data["i_final_bfo"] = pd.read_csv(fb_nfo_i)
+            if os.path.exists(cb_nfo_i):
+                download_data["i_carry_bfo"] = pd.read_csv(cb_nfo_i)
 
         if not noren_users.empty:
             status.write("Processing Noren...")
@@ -410,22 +428,56 @@ def run_processing(
                 fn_nfo_n, cn_nfo_n, fb_nfo_n, cb_nfo_n
             )
             if not pos_n.empty:
-                update_eod_positions(current, pos_n, updated_path)
+                current_df = update_eod_positions_df(current_df, pos_n)
+                download_data["updated_df"] = current_df.copy()
 
-            if os.path.exists(fn_nfo_n): n_final_nfo = move_to_downloads(fn_nfo_n, fn_nfo_n)
-            if os.path.exists(cn_nfo_n): n_carry_nfo = move_to_downloads(cn_nfo_n, cn_nfo_n)
-            if os.path.exists(fb_nfo_n): n_final_bfo = move_to_downloads(fb_nfo_n, fb_nfo_n)
-            if os.path.exists(cb_nfo_n): n_carry_bfo = move_to_downloads(cb_nfo_n, cb_nfo_n)
+            if os.path.exists(fn_nfo_n):
+                download_data["n_final_nfo"] = pd.read_csv(fn_nfo_n)
+            if os.path.exists(cn_nfo_n):
+                download_data["n_carry_nfo"] = pd.read_csv(cn_nfo_n)
+            if os.path.exists(fb_nfo_n):
+                download_data["n_final_bfo"] = pd.read_csv(fb_nfo_n)
+            if os.path.exists(cb_nfo_n):
+                download_data["n_carry_bfo"] = pd.read_csv(cb_nfo_n)
 
         status.update(label="Done", state="complete")
 
-    return (
-        updated_path,
-        i_final_nfo, i_carry_nfo, i_final_bfo, i_carry_bfo,
-        n_final_nfo, n_carry_nfo, n_final_bfo, n_carry_bfo
+    return download_data
+
+def update_eod_positions_df(eod_df, position_summary):
+    if position_summary.empty:
+        return eod_df.copy()
+
+    eod = eod_df.copy()
+
+    eod["Symbol_clean"] = (
+        eod["Symbol"].astype(str).str.upper().str.replace(" ", "", regex=False)
+        .str.extract(r'(\d{5}(PE|CE)|((PE|CE)\d{5}))', expand=False).iloc[:, 0]
+        .str.replace(r'(PE|CE)(\d{5})', r'\2\1', regex=True).fillna("")
     )
 
+    eod["key"] = eod["UserID"].astype(str).str.strip() + "|" + eod["Symbol_clean"].str.strip()
 
+    position_summary["key"] = (
+        position_summary["UserID"].astype(str).str.strip() + "|" +
+        position_summary["Symbol"].str.strip()
+    )
+
+    cols = ["Net Qty", "Buy Qty", "Buy Avg Price", "Buy Value",
+            "Sell Qty", "Sell Avg Price", "Sell Value",
+            "Carry Fwd Qty", "Realized Profit", "Unrealized Profit", "P&L"]
+    cols = [c for c in cols if c in eod.columns]
+
+    merged = eod.merge(position_summary[["key"] + cols], on="key", how="left", suffixes=("", "_new"))
+
+    for col in cols:
+        merged[col] = merged[f"{col}_new"].combine_first(merged[col])
+
+    drop = [f"{c}_new" for c in cols] + ["key", "Symbol_clean"]
+    drop = [c for c in drop if c in merged.columns]
+    updated = merged.drop(columns=drop)
+
+    return updated
 
 # ───────────────────────────────────────────────────────────────────────────────
 #   MAIN APP - TABS
@@ -445,7 +497,7 @@ tab0, tab1, tab2 = st.tabs([
 
 with tab0:
     st.header("Noren & IIFL FIFO PNL + Position Processor (NRML / NFO / BFO)")
-    st.caption("Supports separate carry-forward for IIFL & Noren • Updates EOD • All files downloadable to Downloads folder")
+    st.caption("Supports separate carry-forward for IIFL & Noren • Updates EOD • Direct browser downloads (no disk path)")
 
     with st.form("process_form_tab0"):
 
@@ -457,7 +509,7 @@ with tab0:
             orderbook_upl = st.file_uploader("Orderbook (CSV)", type="csv", key="ord_tab0")
         with colB:
             eod_upl       = st.file_uploader("Current EOD Positions (CSV)", type="csv", key="eod_tab0")
-            output_name   = st.text_input("Final output filename", "updated_positions.csv", key="outname_tab0")
+            output_name   = st.text_input("Suggested filename for updated positions", "updated_positions.csv", key="outname_tab0")
 
         st.subheader("Carry-forward Files (optional – from previous day)")
 
@@ -487,15 +539,15 @@ with tab0:
                 "summary":      save_uploaded_temp(summary_upl),
                 "orderbook":    save_uploaded_temp(orderbook_upl),
                 "eod":          save_uploaded_temp(eod_upl),
-                "carry_nfo_iifl":  save_uploaded_temp(carry_nfo_iifl_upl),
-                "carry_bfo_iifl":  save_uploaded_temp(carry_bfo_iifl_upl),
-                "carry_nfo_noren": save_uploaded_temp(carry_nfo_noren_upl),
-                "carry_bfo_noren": save_uploaded_temp(carry_bfo_noren_upl),
+                "carry_nfo_iifl":  save_uploaded_temp(carry_nfo_iifl_upl) if carry_nfo_iifl_upl else None,
+                "carry_bfo_iifl":  save_uploaded_temp(carry_bfo_iifl_upl) if carry_bfo_iifl_upl else None,
+                "carry_nfo_noren": save_uploaded_temp(carry_nfo_noren_upl) if carry_nfo_noren_upl else None,
+                "carry_bfo_noren": save_uploaded_temp(carry_bfo_noren_upl) if carry_bfo_noren_upl else None,
             }
 
-            with st.spinner("Processing trades (can take several seconds for large files)..."):
+            with st.spinner("Processing trades (may take several seconds)..."):
                 try:
-                    results = run_processing(
+                    download_data = run_processing(
                         temp_paths["summary"],
                         temp_paths["orderbook"],
                         temp_paths["eod"],
@@ -508,68 +560,67 @@ with tab0:
                         enable_noren
                     )
 
-                    updated, i_fn, i_cn, i_fb, i_cb, n_fn, n_cn, n_fb, n_cb = results
+                    st.success("Processing completed!")
 
-                    st.success("Processing finished!")
-                    st.subheader("Download all generated files")
+                    st.subheader("Download Results")
 
                     cols = st.columns(3)
 
+                    # Helper function to create download button safely
+                    def safe_download(df, filename, label, col):
+                        if df is not None and not df.empty:
+                            buf = BytesIO()
+                            df.to_csv(buf, index=False)
+                            buf.seek(0)
+                            col.download_button(
+                                label=label,
+                                data=buf,
+                                file_name=filename,
+                                mime="text/csv",
+                                key=f"dl_{filename.replace('.csv','')}"
+                            )
+
+                    today = date.today().strftime("%Y%m%d")
+
                     with cols[0]:
-                        if updated and os.path.exists(updated):
-                            with open(updated, "rb") as f:
-                                st.download_button(
-                                    label="Updated Positions (final)",
-                                    data=f,
-                                    file_name=output_name,
-                                    mime="text/csv",
-                                    key="dl_final_tab0"
-                                )
-
-                        if i_fn:
-                            with open(i_fn, "rb") as f:
-                                st.download_button("IIFL NFO Final", f, file_name=os.path.basename(i_fn), key="i_nfo_final")
-
-                        if n_fn:
-                            with open(n_fn, "rb") as f:
-                                st.download_button("Noren NFO Final", f, file_name=os.path.basename(n_fn), key="n_nfo_final")
+                        safe_download(download_data["updated_df"], output_name, "📥 Updated Positions (final)", cols[0])
+                        safe_download(download_data["i_final_nfo"], f"final_nfo_iifl_{today}.csv", "IIFL NFO Final", cols[0])
+                        safe_download(download_data["n_final_nfo"], f"final_nfo_noren_{today}.csv", "Noren NFO Final", cols[0])
 
                     with cols[1]:
-                        if i_cn:
-                            with open(i_cn, "rb") as f:
-                                st.download_button("IIFL NFO Carry", f, file_name=os.path.basename(i_cn), key="i_nfo_carry")
-
-                        if n_cn:
-                            with open(n_cn, "rb") as f:
-                                st.download_button("Noren NFO Carry", f, file_name=os.path.basename(n_cn), key="n_nfo_carry")
-
-                        if i_fb:
-                            with open(i_fb, "rb") as f:
-                                st.download_button("IIFL BFO Final", f, file_name=os.path.basename(i_fb), key="i_bfo_final")
+                        safe_download(download_data["i_carry_nfo"], f"carry_nfo_iifl_{today}.csv", "IIFL NFO Carry", cols[1])
+                        safe_download(download_data["n_carry_nfo"], f"carry_nfo_noren_{today}.csv", "Noren NFO Carry", cols[1])
+                        safe_download(download_data["i_final_bfo"], f"final_bfo_iifl_{today}.csv", "IIFL BFO Final", cols[1])
 
                     with cols[2]:
-                        if n_fb:
-                            with open(n_fb, "rb") as f:
-                                st.download_button("Noren BFO Final", f, file_name=os.path.basename(n_fb), key="n_bfo_final")
-
-                        if i_cb:
-                            with open(i_cb, "rb") as f:
-                                st.download_button("IIFL BFO Carry", f, file_name=os.path.basename(i_cb), key="i_bfo_carry")
-
-                        if n_cb:
-                            with open(n_cb, "rb") as f:
-                                st.download_button("Noren BFO Carry", f, file_name=os.path.basename(n_cb), key="n_bfo_carry")
+                        safe_download(download_data["n_final_bfo"], f"final_bfo_noren_{today}.csv", "Noren BFO Final", cols[2])
+                        safe_download(download_data["i_carry_bfo"], f"carry_bfo_iifl_{today}.csv", "IIFL BFO Carry", cols[2])
+                        safe_download(download_data["n_carry_bfo"], f"carry_bfo_noren_{today}.csv", "Noren BFO Carry", cols[2])
 
                 except Exception as e:
-                    st.error("Error occurred during processing")
-                    with st.expander("Show full error trace"):
+                    st.error("Error during processing")
+                    with st.expander("Show detailed error"):
                         st.code(traceback.format_exc(), language="python")
 
                 finally:
+                    # Clean up all temporary files
                     for path in temp_paths.values():
                         if path and os.path.exists(path):
                             try:
                                 os.unlink(path)
+                            except:
+                                pass
+
+                    # Clean files created by apply_fifo
+                    for fname in [
+                        f"final_nfo_iifl_{today}.csv", f"carry_nfo_iifl_{today}.csv",
+                        f"final_bfo_iifl_{today}.csv", f"carry_bfo_iifl_{today}.csv",
+                        f"final_nfo_noren_{today}.csv", f"carry_nfo_noren_{today}.csv",
+                        f"final_bfo_noren_{today}.csv", f"carry_bfo_noren_{today}.csv",
+                    ]:
+                        if os.path.exists(fname):
+                            try:
+                                os.unlink(fname)
                             except:
                                 pass
 
@@ -1031,6 +1082,4 @@ with tab2:
                     key="dl_user_hedge_tab2"
                 )
 
-
         st.info("Files are kept in memory until you refresh or restart the app. You can download multiple times.")
-
