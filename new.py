@@ -13,12 +13,27 @@ import traceback
 from datetime import date
 import tempfile
 import openpyxl
+from io import BytesIO
 
 st.set_page_config(page_title="Algo19 Utils", layout="wide")
 
 # ───────────────────────────────────────────────────────────────────────────────
 #   ALL ORIGINAL FUNCTIONS ── COMPLETELY UNCHANGED
 # ───────────────────────────────────────────────────────────────────────────────
+
+def safe_read_csv(path):
+    """Read CSV only if file exists and is not empty"""
+    if not os.path.exists(path):
+        return None
+    try:
+        if os.path.getsize(path) == 0:
+            return None  # empty file
+        df = pd.read_csv(path)
+        if df.empty:
+            return None
+        return df
+    except Exception:
+        return None
 
 def load_summary(summary_path):
     df = pd.read_excel(summary_path)
@@ -411,14 +426,16 @@ def run_processing(
                 download_data["updated_df"] = current_df.copy()
 
             # Read what apply_fifo wrote
-            if os.path.exists(fn_nfo_i):
-                download_data["i_final_nfo"] = pd.read_csv(fn_nfo_i)
-            if os.path.exists(cn_nfo_i):
-                download_data["i_carry_nfo"] = pd.read_csv(cn_nfo_i)
-            if os.path.exists(fb_nfo_i):
-                download_data["i_final_bfo"] = pd.read_csv(fb_nfo_i)
-            if os.path.exists(cb_nfo_i):
-                download_data["i_carry_bfo"] = pd.read_csv(cb_nfo_i)
+            # Then use it:
+            download_data["i_final_nfo"]  = safe_read_csv(fn_nfo_i)
+            download_data["i_carry_nfo"]  = safe_read_csv(cn_nfo_i)
+            download_data["i_final_bfo"]  = safe_read_csv(fb_nfo_i)
+            download_data["i_carry_bfo"]  = safe_read_csv(cb_nfo_i)
+
+            download_data["n_final_nfo"]  = safe_read_csv(fn_nfo_n)
+            download_data["n_carry_nfo"]  = safe_read_csv(cn_nfo_n)
+            download_data["n_final_bfo"]  = safe_read_csv(fb_nfo_n)
+            download_data["n_carry_bfo"]  = safe_read_csv(cb_nfo_n)
 
         if not noren_users.empty:
             status.write("Processing Noren...")
