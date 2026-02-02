@@ -361,15 +361,15 @@ def run_processing(
     today = date.today().strftime("%Y%m%d")
 
     # Temp filenames used internally by apply_fifo (unchanged)
-    fn_nfo_i = f"final_nfo_iifl_{today}.csv"
-    cn_nfo_i = f"carry_nfo_iifl_{today}.csv"
-    fb_nfo_i = f"final_bfo_iifl_{today}.csv"
-    cb_nfo_i = f"carry_bfo_iifl_{today}.csv"
+    fn_nfo_i = f"final_nfo_iifl.csv"
+    cn_nfo_i = f"carry_nfo_iifl.csv"
+    fb_nfo_i = f"final_bfo_iifl.csv"
+    cb_nfo_i = f"carry_bfo_iifl.csv"
 
-    fn_nfo_n = f"final_nfo_noren_{today}.csv"
-    cn_nfo_n = f"carry_nfo_noren_{today}.csv"
-    fb_nfo_n = f"final_bfo_noren_{today}.csv"
-    cb_nfo_n = f"carry_bfo_noren_{today}.csv"
+    fn_nfo_n = f"final_nfo_noren.csv"
+    cn_nfo_n = f"carry_nfo_noren.csv"
+    fb_nfo_n = f"final_bfo_noren.csv"
+    cb_nfo_n = f"carry_bfo_noren.csv"
 
     with st.status("Processing...", expanded=True) as status:
         status.write("Loading files...")
@@ -584,18 +584,18 @@ with tab0:
 
                     with cols[0]:
                         safe_download(download_data["updated_df"], output_name, "📥 Updated Positions (final)", cols[0])
-                        safe_download(download_data["i_final_nfo"], f"final_nfo_iifl_{today}.csv", "IIFL NFO Final", cols[0])
-                        safe_download(download_data["n_final_nfo"], f"final_nfo_noren_{today}.csv", "Noren NFO Final", cols[0])
+                        safe_download(download_data["i_final_nfo"], f"final_nfo_iifl.csv", "IIFL NFO Final", cols[0])
+                        safe_download(download_data["n_final_nfo"], f"final_nfo_noren.csv", "Noren NFO Final", cols[0])
 
                     with cols[1]:
-                        safe_download(download_data["i_carry_nfo"], f"carry_nfo_iifl_{today}.csv", "IIFL NFO Carry", cols[1])
-                        safe_download(download_data["n_carry_nfo"], f"carry_nfo_noren_{today}.csv", "Noren NFO Carry", cols[1])
-                        safe_download(download_data["i_final_bfo"], f"final_bfo_iifl_{today}.csv", "IIFL BFO Final", cols[1])
+                        safe_download(download_data["i_carry_nfo"], f"carry_nfo_iifl.csv", "IIFL NFO Carry", cols[1])
+                        safe_download(download_data["n_carry_nfo"], f"carry_nfo_noren.csv", "Noren NFO Carry", cols[1])
+                        safe_download(download_data["i_final_bfo"], f"final_bfo_iifl.csv", "IIFL BFO Final", cols[1])
 
                     with cols[2]:
-                        safe_download(download_data["n_final_bfo"], f"final_bfo_noren_{today}.csv", "Noren BFO Final", cols[2])
-                        safe_download(download_data["i_carry_bfo"], f"carry_bfo_iifl_{today}.csv", "IIFL BFO Carry", cols[2])
-                        safe_download(download_data["n_carry_bfo"], f"carry_bfo_noren_{today}.csv", "Noren BFO Carry", cols[2])
+                        safe_download(download_data["n_final_bfo"], f"final_bfo_noren.csv", "Noren BFO Final", cols[2])
+                        safe_download(download_data["i_carry_bfo"], f"carry_bfo_iifl.csv", "IIFL BFO Carry", cols[2])
+                        safe_download(download_data["n_carry_bfo"], f"carry_bfo_noren.csv", "Noren BFO Carry", cols[2])
 
                 except Exception as e:
                     st.error("Error during processing")
@@ -613,10 +613,10 @@ with tab0:
 
                     # Clean files created by apply_fifo
                     for fname in [
-                        f"final_nfo_iifl_{today}.csv", f"carry_nfo_iifl_{today}.csv",
-                        f"final_bfo_iifl_{today}.csv", f"carry_bfo_iifl_{today}.csv",
-                        f"final_nfo_noren_{today}.csv", f"carry_nfo_noren_{today}.csv",
-                        f"final_bfo_noren_{today}.csv", f"carry_bfo_noren_{today}.csv",
+                        f"final_nfo_iifl.csv", f"carry_nfo_iifl.csv",
+                        f"final_bfo_iifl.csv", f"carry_bfo_iifl.csv",
+                        f"final_nfo_noren.csv", f"carry_nfo_noren.csv",
+                        f"final_bfo_noren.csv", f"carry_bfo_noren.csv",
                     ]:
                         if os.path.exists(fname):
                             try:
