@@ -2890,6 +2890,16 @@ def run_processing(
 
             # Read what apply_fifo wrote
             # Then use it:
+            # download_data["i_final_nfo"]  = safe_read_csv(fn_nfo_i)
+            # download_data["i_carry_nfo"]  = safe_read_csv(cn_nfo_i)
+            # download_data["i_final_bfo"]  = safe_read_csv(fb_nfo_i)
+            # download_data["i_carry_bfo"]  = safe_read_csv(cb_nfo_i)
+
+            # download_data["n_final_nfo"]  = safe_read_csv(fn_nfo_n)
+            # download_data["n_carry_nfo"]  = safe_read_csv(cn_nfo_n)
+            # download_data["n_final_bfo"]  = safe_read_csv(fb_nfo_n)
+            # download_data["n_carry_bfo"]  = safe_read_csv(cb_nfo_n)
+
             download_data["i_final_nfo"]  = safe_read_csv(fn_nfo_i)
             download_data["i_carry_nfo"]  = safe_read_csv(cn_nfo_i)
             download_data["i_final_bfo"]  = safe_read_csv(fb_nfo_i)
@@ -2911,14 +2921,19 @@ def run_processing(
                 current_df = update_eod_positions_df(current_df, pos_n)
                 download_data["updated_df"] = current_df.copy()
 
-            if os.path.exists(fn_nfo_n):
-                download_data["n_final_nfo"] = pd.read_csv(fn_nfo_n)
-            if os.path.exists(cn_nfo_n):
-                download_data["n_carry_nfo"] = pd.read_csv(cn_nfo_n)
-            if os.path.exists(fb_nfo_n):
-                download_data["n_final_bfo"] = pd.read_csv(fb_nfo_n)
-            if os.path.exists(cb_nfo_n):
-                download_data["n_carry_bfo"] = pd.read_csv(cb_nfo_n)
+            # if os.path.exists(fn_nfo_n):
+            #     download_data["n_final_nfo"] = pd.read_csv(fn_nfo_n)
+            # if os.path.exists(cn_nfo_n):
+            #     download_data["n_carry_nfo"] = pd.read_csv(cn_nfo_n)
+            # if os.path.exists(fb_nfo_n):
+            #     download_data["n_final_bfo"] = pd.read_csv(fb_nfo_n)
+            # if os.path.exists(cb_nfo_n):
+            #     download_data["n_carry_bfo"] = pd.read_csv(cb_nfo_n)
+
+            download_data["n_final_nfo"]  = safe_read_csv(fn_nfo_n)
+            download_data["n_carry_nfo"]  = safe_read_csv(cn_nfo_n)
+            download_data["n_final_bfo"]  = safe_read_csv(fb_nfo_n)
+            download_data["n_carry_bfo"]  = safe_read_csv(cb_nfo_n)
 
         status.update(label="Done", state="complete")
 
