@@ -3744,6 +3744,7 @@ with tab2:
                 try:
                     # ───── Excel part ─────
                     df = pd.read_excel(excel_file_tab2, sheet_name="MultiLeg Orders")
+                    df = df[df["Status"] == "COMPLETE"]
 
                     # Leg-level PNL
                     leg_results = []
@@ -3908,4 +3909,5 @@ with tab2:
                 )
 
         st.info("Files are kept in memory until you refresh or restart the app. You can download multiple times.")
+
 
